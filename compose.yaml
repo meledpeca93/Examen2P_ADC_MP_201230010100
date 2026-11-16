@@ -1,4 +1,7 @@
 services:
+  
+  
+  # SERVICIO DE  BASE DE DATOS SQL SERVER 2022
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
     platform: linux/amd64
@@ -19,6 +22,43 @@ services:
       timeout: 10s
       retries: 12
       start_period: 120s
+
+
+   #SERVICIO DE API REST
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    environment:
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Define MSSQL_SA_PASSWORD en .env}"
+      MSSQL_APP_PASSWORD: "${MSSQL_APP_PASSWORD:?Define MSSQL_APP_PASSWORD en .env}"
+      DB_HOST: db
+      DB_PORT: "1433"
+      INIT_SQL_PATH: /app/db/init.sql
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ventasadc_net
+    expose:
+      - "5000"
+    cpus: 1.0
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+
+
+
+
+
+
+
 
 networks:
   ventasadc_net:

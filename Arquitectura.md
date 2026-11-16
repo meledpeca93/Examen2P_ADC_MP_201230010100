@@ -10,7 +10,7 @@
 - La contraseña de la cuenta de aplicación se proporcionará mediante `MSSQL_APP_PASSWORD`, también solo en `.env`.
 - `.env` no se publicará en GitHub. `.env.example` contendrá únicamente un valor ficticio.
 - La contraseña real se elegirá y guardará localmente; no se compartirá en el chat.
-- El Mac anfitrión es `arm64`; se intentará ejecutar la imagen `linux/amd64` mediante emulación. Microsoft indica que esta emulación no está soportada. Si SQL Server no arranca de forma fiable, se usará un host Docker `x86_64` para ejecutarlo y validarlo.
+- El Mac anfitrión es `arm64`; SQL Server se ejecuta como imagen `linux/amd64` mediante emulación. La prueba local logró iniciar el motor y dejarlo `healthy`, pero Microsoft indica que esta emulación no está soportada. Para un entorno oficialmente compatible, se usará un host Docker `x86_64`.
 
 ### 1.2 Volumen persistente
 
@@ -61,3 +61,29 @@
 - SQL Server escuchará en el puerto `1433` dentro de Docker.
 - Se publicará `127.0.0.1:14330` del Mac hacia `1433` del contenedor para conectarse desde DBeaver, sin exponer SQL Server a otros equipos de la red.
 - Los servicios de Docker se conectarán por la red interna; la API usará `db:1433`.
+
+### 1.8 Dependencias Python para conectar la API
+
+- La API utilizará `Flask==3.1.1` y `pyodbc==5.2.0`, declarados en `api/requirements.txt`.
+- La imagen de la API usará `python:3.12-slim-bookworm` e instalará Microsoft ODBC Driver 18 siguiendo las instrucciones oficiales para Debian 12.
+- El contexto de construcción de la imagen será la raíz del repositorio para incluir `db/init.sql` en `/app/db/init.sql`.
+- Un `.dockerignore` en la raíz excluirá `.env` y otros archivos locales del contexto de construcción, sin excluir `api/` ni `db/`.
+- El Dockerfile copiará e instalará `requirements.txt` antes de copiar el código de la aplicación para aprovechar la caché de capas.
+- La API se ejecutará con un usuario sin privilegios; el comando de inicio será `python app.py`, que inicializará la base antes de servir solicitudes.
+
+### 1.9 Validación local
+
+- `docker compose config --quiet` terminó correctamente.
+- La imagen de la API se construyó correctamente con `docker compose build api`.
+- `db` y `api` aparecen `healthy` en `docker compose ps`.
+- La persistencia se comprobó tras `docker compose down` y `docker compose up -d db`, sin eliminar el volumen.
+- Desde el contenedor `api`, una consulta con `ventasadc_app` devolvió 5 órdenes y 10 detalles.
+- La documentación de la ejecución de `init.sql` en `README.md` queda pendiente.
+
+## 2. API REST
+
+### 2.1 Listar órdenes
+
+- `GET /api/ordenes` devuelve las órdenes en JSON con HTTP `200`.
+- La API consulta SQL Server como `ventasadc_app` a través de `db:1433`.
+- Validación local: respuesta HTTP `200` con las 5 órdenes de prueba.
