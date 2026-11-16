@@ -1,0 +1,30 @@
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Define MSSQL_SA_PASSWORD en .env}"
+    ports:
+      - "127.0.0.1:14330:1433"
+    volumes:
+      - ventasadc_sqlserver2022_data:/var/opt/mssql
+    networks:
+      - ventasadc_net
+    cpus: 2.0
+    mem_limit: 2g
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -No -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -b -Q \"SELECT 1\" > /dev/null"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 120s
+
+networks:
+  ventasadc_net:
+    name: ventasadc_net
+    driver: bridge
+
+volumes:
+  ventasadc_sqlserver2022_data:
+    name: ventasadc_sqlserver2022_data
