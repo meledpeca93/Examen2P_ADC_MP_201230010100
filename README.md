@@ -6,7 +6,7 @@ Proyecto académico compuesto por SQL Server 2022, una API REST en Flask y una i
 
 | Nombre completo | Número de cuenta |
 |---|---:|
-| Melvin Edgardo Peña Caballero | 2012300100 |
+| Melvin Edgardo Peña Caballero | 201230010100 |
 
 ## Arquitectura
 
