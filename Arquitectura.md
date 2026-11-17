@@ -1,5 +1,27 @@
 # Arquitectura — Examen del Segundo Parcial
 
+## Diagrama de arquitectura
+
+```mermaid
+flowchart LR
+    navegador["Navegador<br/>127.0.0.1:8090"] -->|"HTTP :8090 → :8000"| web
+    clienteSQL["Cliente SQL en el host<br/>127.0.0.1:14330"] -->|"TCP :14330 → :1433"| db
+
+    subgraph compose["Docker Compose"]
+        subgraph red["Red interna: ventasadc_net"]
+            web["web<br/>Django :8000"]
+            api["api<br/>Flask :5000 (interno)"]
+            db["db<br/>SQL Server 2022 :1433"]
+            web -->|"API_BASE_URL=http://api:5000"| api
+            api -->|"DB_HOST=db :1433"| db
+            db -.->|"healthy antes de iniciar api"| api
+            api -.->|"healthy antes de iniciar web"| web
+        end
+        volumen[("Volumen: ventasadc_sqlserver2022_data<br/>montado en /var/opt/mssql")]
+        db --- volumen
+    end
+```
+
 ## 1. Base de datos (db)
 
 ### 1.1 Imagen oficial y credenciales
@@ -48,7 +70,7 @@
 - `ventasadc_app` recibirá permisos de lectura y escritura en `OrdenesDB`.
 - Para las operaciones normales, la API usará `ventasadc_app`, no `sa`.
 - Si falla la inicialización, la API registrará el error y no iniciará como si estuviera lista.
-- El procedimiento también se documentará en `README.md`.
+- El procedimiento de inicialización también está documentado en `README.md`.
 
 ### 1.6 Healthcheck
 
@@ -67,7 +89,7 @@
 - La API utilizará `Flask==3.1.1` y `pyodbc==5.2.0`, declarados en `api/requirements.txt`.
 - La imagen de la API usará `python:3.12-slim-bookworm` e instalará Microsoft ODBC Driver 18 siguiendo las instrucciones oficiales para Debian 12.
 - El contexto de construcción de la imagen será la raíz del repositorio para incluir `db/init.sql` en `/app/db/init.sql`.
-- Un `.dockerignore` en la raíz excluirá `.env` y otros archivos locales del contexto de construcción, sin excluir `api/` ni `db/`.
+- Se mantendrá un `.dockerignore` general en la raíz y archivos específicos junto a cada Dockerfile: `api/Dockerfile.dockerignore` y `web/Dockerfile.dockerignore`. Estos repiten las exclusiones de secretos y archivos locales; además, cada uno excluye el código del otro servicio. El contexto de API conserva `db/` para incluir `db/init.sql`.
 - El Dockerfile copiará e instalará `requirements.txt` antes de copiar el código de la aplicación para aprovechar la caché de capas.
 - La API se ejecutará con un usuario sin privilegios; el comando de inicio será `python app.py`, que inicializará la base antes de servir solicitudes.
 
@@ -75,10 +97,10 @@
 
 - `docker compose config --quiet` terminó correctamente.
 - La imagen de la API se construyó correctamente con `docker compose build api`.
-- `db` y `api` aparecen `healthy` en `docker compose ps`.
+- `db`, `api` y `web` aparecen `healthy` en `docker compose ps`.
 - La persistencia se comprobó tras `docker compose down` y `docker compose up -d db`, sin eliminar el volumen.
 - Desde el contenedor `api`, una consulta con `ventasadc_app` devolvió 5 órdenes y 10 detalles.
-- La documentación de la ejecución de `init.sql` en `README.md` queda pendiente.
+- La ejecución automática de `init.sql` y los pasos de puesta en marcha están documentados en `README.md`.
 
 ## 2. API REST
 
@@ -163,3 +185,18 @@
 ### 2.10 Estado de la API
 
 - `GET /health` devuelve `{"status":"healthy"}` con HTTP `200` y se usa en el healthcheck del contenedor `api`.
+
+## 3. Publicación de imágenes en Docker Hub
+
+- API: [`penia93/examen2p-api:v1.0`](https://hub.docker.com/r/penia93/examen2p-api).
+- Web: [`penia93/examen2p-web:v1.0`](https://hub.docker.com/r/penia93/examen2p-web).
+- Las imágenes se construyeron para `linux/amd64`, con los Dockerfiles de `api` y `web` y el contexto de construcción en la raíz del repositorio.
+- Validación el 2026-11-17: `docker manifest inspect` resolvió ambos tags y devolvió manifiestos con `schemaVersion: 2`.
+- Digest de configuración reportado para API: `sha256:08f719da55653e186f6351cd64c2696f56a3a5af893066de12d1d307d5bb454b`.
+- Digest de configuración reportado para Web: `sha256:f47d8c7b319d884c627140e709b103877e3a1261b1380cb913c0f1211536eba5`.
+
+## 4. Exclusiones del contexto de construcción
+
+- API: `api/Dockerfile.dockerignore` excluye secretos, cachés, archivos locales, evidencias y el directorio `web/`.
+- Web: `web/Dockerfile.dockerignore` excluye secretos, cachés, archivos locales, evidencias, `api/` y `db/`.
+- Ambos builds usan el contexto raíz. Los archivos `Dockerfile.dockerignore` se aplican al Dockerfile correspondiente; un `.dockerignore` dentro de `api/` o `web/` no se aplicaría con este contexto.
