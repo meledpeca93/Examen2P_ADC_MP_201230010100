@@ -1,0 +1,36 @@
+{% extends "portal/base.html" %}
+
+{% block title %}{{ title }} · Ventas ADC{% endblock %}
+
+{% block content %}
+<a class="back-link" href="{% url 'order_detail' order.id %}">
+    <i data-lucide="arrow-left" class="icon" aria-hidden="true"></i>
+    <span>Volver a la orden #{{ order.id }}</span>
+</a>
+
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">Orden #{{ order.id }} · {{ order.cliente }}</p>
+        <h1>{{ title }}</h1>
+        <p class="page-subtitle">El subtotal y el total de la orden se actualizarán al guardar.</p>
+    </div>
+</section>
+
+<section class="panel form-card">
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="form-note">
+            <i data-lucide="info" class="icon" aria-hidden="true"></i>
+            <span>El subtotal se calcula automáticamente con la cantidad y el precio unitario.</span>
+        </div>
+        <div class="form-actions">
+            <button class="button button-primary" type="submit">
+                <i data-lucide="save" class="icon" aria-hidden="true"></i>
+                <span>Guardar detalle</span>
+            </button>
+            <a class="button button-secondary" href="{% url 'order_detail' order.id %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

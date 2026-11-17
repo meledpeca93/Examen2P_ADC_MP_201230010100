@@ -53,6 +53,25 @@ services:
       start_period: 30s
 
 
+#SERVICIO WEB DE FRONTEND
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    environment:
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?Define DJANGO_SECRET_KEY en .env}"
+      API_BASE_URL: "http://api:5000"
+      DJANGO_ALLOWED_HOSTS: "localhost,127.0.0.1"
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8090:8000"
+    networks:
+      - ventasadc_net
+    cpus: 1.0
+    mem_limit: 512m
+    pids_limit: 256
 
 
 

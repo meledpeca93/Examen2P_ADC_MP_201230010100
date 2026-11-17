@@ -1,0 +1,129 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Órdenes · Ventas ADC{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">Ventas / Operaciones</p>
+        <h1>Órdenes</h1>
+        <p class="page-subtitle">Consulta y administra las órdenes registradas.</p>
+    </div>
+    <div class="heading-actions">
+        <a class="button button-primary" href="{% url 'order_create' %}">
+            <i data-lucide="plus" class="icon" aria-hidden="true"></i>
+            <span>Nueva orden</span>
+        </a>
+    </div>
+</section>
+
+<section class="panel" aria-labelledby="orders-title">
+    <div class="panel-header">
+        <div>
+            <h2 id="orders-title">Listado de órdenes</h2>
+            <p class="panel-description">Información sincronizada con la API de ventas.</p>
+        </div>
+        {% if orders %}
+            <span class="id-badge">{{ orders|length }} registro{{ orders|length|pluralize:"s" }}</span>
+        {% endif %}
+    </div>
+
+    {% if orders %}
+        <div class="table-wrap">
+            <table class="orders-table">
+                <thead>
+                    <tr>
+                        <th scope="col">Orden</th>
+                        <th scope="col">Cliente</th>
+                        <th scope="col">Fecha</th>
+                        <th scope="col">Estado</th>
+                        <th scope="col">Total</th>
+                        <th scope="col">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                        <tr>
+                            <td><span class="id-badge">#{{ order.id }}</span></td>
+                            <td><span class="primary-cell">{{ order.cliente }}</span></td>
+                            <td>{{ order.fecha }}</td>
+                            <td>
+                                {% if order.estado == "Pagada" %}
+                                    <span class="status-badge status-paid"><i data-lucide="circle-check" class="icon" aria-hidden="true"></i>Pagada</span>
+                                {% elif order.estado == "Anulada" %}
+                                    <span class="status-badge status-cancelled"><i data-lucide="circle-x" class="icon" aria-hidden="true"></i>Anulada</span>
+                                {% else %}
+                                    <span class="status-badge status-pending"><i data-lucide="clock" class="icon" aria-hidden="true"></i>{{ order.estado }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="money">{{ order.total|floatformat:2 }}</td>
+                            <td>
+                                <div class="row-actions">
+                                    <a class="button button-quiet" href="{% url 'order_detail' order.id %}" aria-label="Ver orden {{ order.id }}">
+                                        <i data-lucide="eye" class="icon" aria-hidden="true"></i>
+                                        <span>Ver</span>
+                                    </a>
+                                    <a class="button button-quiet" href="{% url 'order_edit' order.id %}" aria-label="Editar orden {{ order.id }}">
+                                        <i data-lucide="pencil" class="icon" aria-hidden="true"></i>
+                                        <span>Editar</span>
+                                    </a>
+                                    <form class="inline-form" method="post" action="{% url 'order_delete' order.id %}"
+                                          onsubmit="return confirm('¿Eliminar esta orden y sus detalles?')">
+                                        {% csrf_token %}
+                                        <button class="button button-danger" type="submit" aria-label="Eliminar orden {{ order.id }}">
+                                            <i data-lucide="trash-2" class="icon" aria-hidden="true"></i>
+                                            <span>Eliminar</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <span class="empty-icon"><i data-lucide="clipboard-list" class="icon" aria-hidden="true"></i></span>
+            <h3>No hay órdenes para mostrar</h3>
+            <p>Crea una orden para comenzar a administrar tus ventas.</p>
+            <a class="button button-primary" href="{% url 'order_create' %}">
+                <i data-lucide="plus" class="icon" aria-hidden="true"></i>
+                <span>Crear primera orden</span>
+            </a>
+        </div>
+    {% endif %}
+</section>
+
+<dialog
+    id="order-create-dialog"
+    class="modal-dialog"
+    aria-labelledby="create-order-title"
+    aria-describedby="create-order-description"
+    data-open-on-load="{{ show_create_modal|yesno:'true,false' }}"
+    data-return-url="{% url 'order_list' %}"
+>
+    <header class="modal-header">
+        <span class="modal-icon"><i data-lucide="file-plus-2" class="icon" aria-hidden="true"></i></span>
+        <div class="modal-heading">
+            <h2 id="create-order-title">Nueva orden</h2>
+            <p id="create-order-description">Completa los datos principales para registrar una orden.</p>
+        </div>
+        <button class="modal-close" type="button" aria-label="Cerrar ventana" data-close-modal>
+            <i data-lucide="x" class="icon" aria-hidden="true"></i>
+        </button>
+    </header>
+
+    <form class="modal-form" method="post" action="{% url 'order_create' %}">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <div class="modal-actions">
+            <button class="button button-secondary" type="button" data-close-modal>Cancelar</button>
+            <button class="button button-primary" type="submit">
+                <i data-lucide="save" class="icon" aria-hidden="true"></i>
+                <span>Crear orden</span>
+            </button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}

@@ -1,0 +1,165 @@
+{% extends "portal/base.html" %}
+
+{% block title %}Orden {{ order.id }} · Ventas ADC{% endblock %}
+
+{% block content %}
+<a class="back-link" href="{% url 'order_list' %}">
+    <i data-lucide="arrow-left" class="icon" aria-hidden="true"></i>
+    <span>Volver a órdenes</span>
+</a>
+
+<section class="page-heading">
+    <div>
+        <p class="eyebrow">Detalle de orden · #{{ order.id }}</p>
+        <h1>{{ order.cliente }}</h1>
+        <p class="page-subtitle">Consulta los productos y el resumen de esta orden.</p>
+    </div>
+    <div class="heading-actions">
+        <a class="button button-secondary" href="{% url 'order_edit' order.id %}">
+            <i data-lucide="pencil" class="icon" aria-hidden="true"></i>
+            <span>Editar orden</span>
+        </a>
+        <a class="button button-primary" href="{% url 'detail_create' order.id %}">
+            <i data-lucide="plus" class="icon" aria-hidden="true"></i>
+            <span>Agregar producto</span>
+        </a>
+    </div>
+</section>
+
+<section class="summary-grid" aria-label="Resumen de la orden">
+    <div class="summary-card">
+        <span class="summary-icon"><i data-lucide="calendar-days" class="icon" aria-hidden="true"></i></span>
+        <span>
+            <span class="summary-label">Fecha</span>
+            <span class="summary-value">{{ order.fecha }}</span>
+        </span>
+    </div>
+    <div class="summary-card">
+        <span class="summary-icon"><i data-lucide="circle-dollar-sign" class="icon" aria-hidden="true"></i></span>
+        <span>
+            <span class="summary-label">Total de la orden</span>
+            <span class="summary-value">{{ order.total|floatformat:2 }}</span>
+        </span>
+    </div>
+    <div class="summary-card">
+        <span class="summary-icon"><i data-lucide="package" class="icon" aria-hidden="true"></i></span>
+        <span>
+            <span class="summary-label">Estado</span>
+            <span class="summary-value">
+                {% if order.estado == "Pagada" %}
+                    <span class="status-badge status-paid"><i data-lucide="circle-check" class="icon" aria-hidden="true"></i>Pagada</span>
+                {% elif order.estado == "Anulada" %}
+                    <span class="status-badge status-cancelled"><i data-lucide="circle-x" class="icon" aria-hidden="true"></i>Anulada</span>
+                {% else %}
+                    <span class="status-badge status-pending"><i data-lucide="clock" class="icon" aria-hidden="true"></i>{{ order.estado }}</span>
+                {% endif %}
+            </span>
+        </span>
+    </div>
+</section>
+
+<section class="panel" aria-labelledby="details-title">
+    <div class="panel-header">
+        <div>
+            <h2 id="details-title">Productos de la orden</h2>
+            <p class="panel-description">Los subtotales y el total se calculan desde la API.</p>
+        </div>
+        <a class="button button-secondary" href="{% url 'detail_create' order.id %}">
+            <i data-lucide="package-plus" class="icon" aria-hidden="true"></i>
+            <span>Agregar producto</span>
+        </a>
+    </div>
+
+    {% if order.detalles %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th scope="col">Producto</th>
+                        <th scope="col">Cantidad</th>
+                        <th scope="col">Precio unitario</th>
+                        <th scope="col">Subtotal</th>
+                        <th scope="col">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detail in order.detalles %}
+                        <tr>
+                            <td>
+                                <span class="primary-cell">{{ detail.producto }}</span>
+                                <span class="secondary-cell">Detalle #{{ detail.id }}</span>
+                            </td>
+                            <td>{{ detail.cantidad }}</td>
+                            <td>{{ detail.precio_unitario|floatformat:2 }}</td>
+                            <td class="money">{{ detail.subtotal|floatformat:2 }}</td>
+                            <td>
+                                <div class="row-actions">
+                                    <a class="button button-quiet" href="{% url 'detail_edit' order.id detail.id %}" aria-label="Editar {{ detail.producto }}">
+                                        <i data-lucide="pencil" class="icon" aria-hidden="true"></i>
+                                        <span>Editar</span>
+                                    </a>
+                                    <form class="inline-form" method="post"
+                                          action="{% url 'detail_delete' order.id detail.id %}"
+                                          onsubmit="return confirm('¿Eliminar este detalle?')">
+                                        {% csrf_token %}
+                                        <button class="button button-danger" type="submit" aria-label="Eliminar {{ detail.producto }}">
+                                            <i data-lucide="trash-2" class="icon" aria-hidden="true"></i>
+                                            <span>Eliminar</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <span class="empty-icon"><i data-lucide="package-open" class="icon" aria-hidden="true"></i></span>
+            <h3>Esta orden aún no tiene productos</h3>
+            <p>Agrega un detalle para actualizar automáticamente el total.</p>
+            <a class="button button-primary" href="{% url 'detail_create' order.id %}">
+                <i data-lucide="plus" class="icon" aria-hidden="true"></i>
+                <span>Agregar primer producto</span>
+            </a>
+        </div>
+    {% endif %}
+</section>
+
+<dialog
+    id="detail-create-dialog"
+    class="modal-dialog"
+    aria-labelledby="create-detail-title"
+    aria-describedby="create-detail-description"
+    data-open-on-load="{{ show_detail_modal|yesno:'true,false' }}"
+    data-return-url="{% url 'order_detail' order.id %}"
+>
+    <header class="modal-header">
+        <span class="modal-icon"><i data-lucide="package-plus" class="icon" aria-hidden="true"></i></span>
+        <div class="modal-heading">
+            <h2 id="create-detail-title">Agregar producto</h2>
+            <p id="create-detail-description">Orden #{{ order.id }} · {{ order.cliente }}</p>
+        </div>
+        <button class="modal-close" type="button" aria-label="Cerrar ventana" data-close-modal>
+            <i data-lucide="x" class="icon" aria-hidden="true"></i>
+        </button>
+    </header>
+
+    <form class="modal-form" method="post" action="{% url 'detail_create' order.id %}">
+        {% csrf_token %}
+        {{ detail_form.as_p }}
+        <div class="form-note">
+            <i data-lucide="info" class="icon" aria-hidden="true"></i>
+            <span>El subtotal y el total de la orden se actualizarán al guardar.</span>
+        </div>
+        <div class="modal-actions">
+            <button class="button button-secondary" type="button" data-close-modal>Cancelar</button>
+            <button class="button button-primary" type="submit">
+                <i data-lucide="package-plus" class="icon" aria-hidden="true"></i>
+                <span>Agregar producto</span>
+            </button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}
